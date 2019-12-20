@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,150 +16,62 @@
 
 package org.springframework.tests;
 
-import java.awt.GraphicsEnvironment;
-import java.lang.reflect.Method;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 
-import org.junit.AssumptionViolatedException;
-
-import org.springframework.util.ClassUtils;
-
-import static org.junit.Assume.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Provides utility methods that allow JUnit tests to {@link org.junit.Assume} certain
- * conditions hold {@code true}. If the assumption fails, it means the test should be
- * skipped.
+ * Provides utility methods that allow JUnit tests to assume certain conditions
+ * hold {@code true}. If the assumption fails, it means the test should be
+ * aborted.
  *
- * <p>For example, if a set of tests require at least JDK 1.7 it can use
- * {@code Assume#atLeast(JavaVersion.JAVA_17)} as shown below:
- *
- * <pre class="code">
- * public void MyTests {
- *
- *   &#064;BeforeClass
- *   public static void assumptions() {
- *       Assume.atLeast(JavaVersion.JAVA_17);
- *   }
- *
- *   // ... all the test methods that require at least JDK 1.7
- * }
- * </pre>
- *
- * If only a single test requires at least JDK 1.7 it can use the
- * {@code Assume#atLeast(JavaVersion.JAVA_17)} as shown below:
+ * <p>Tests can be categorized into {@link TestGroup}s. Active groups are enabled using
+ * the 'testGroups' system property, usually activated from the gradle command line:
  *
  * <pre class="code">
- * public void MyTests {
- *
- *   &#064;Test
- *   public void requiresJdk17 {
- *       Assume.atLeast(JavaVersion.JAVA_17);
- *       // ... perform the actual test
- *   }
- * }
- * </pre>
- *
- * In addition to assumptions based on the JDK version, tests can be categorized into
- * {@link TestGroup}s. Active groups are enabled using the 'testGroups' system property,
- * usually activated from the gradle command line:
- * <pre>
  * gradle test -PtestGroups="performance"
  * </pre>
  *
- * Groups can be specified as a comma separated list of values, or using the pseudo group
- * 'all'. See {@link TestGroup} for a list of valid groups.
+ * <p>Groups can be activated as a comma separated list of values, or using the
+ * pseudo group 'all'. See {@link TestGroup} for a list of valid groups.
  *
  * @author Rob Winch
  * @author Phillip Webb
  * @author Sam Brannen
  * @since 3.2
- * @see #atLeast(JavaVersion)
- * @see #group(TestGroup)
- * @see #group(TestGroup, Executable)
+ * @see EnabledForTestGroups @EnabledForTestGroups
+ * @see #notLogging(Log)
+ * @see TestGroup
  */
 public abstract class Assume {
 
-	private static final Set<TestGroup> GROUPS = TestGroup.parse(System.getProperty("testGroups"));
+	static final String TEST_GROUPS_SYSTEM_PROPERTY = "testGroups";
 
 
 	/**
-	 * Assume that a minimum {@link JavaVersion} is running.
-	 * @param version the minimum version for the test to run
-	 * @throws AssumptionViolatedException if the assumption fails
+	 * Assume that a particular {@link TestGroup} is active.
+	 * @param group the group that must be active
+	 * @throws org.opentest4j.TestAbortedException if the assumption fails
+	 * @deprecated as of Spring Framework 5.2 in favor of {@link EnabledForTestGroups}
 	 */
-	public static void atLeast(JavaVersion version) {
-		if (!JavaVersion.runningVersion().isAtLeast(version)) {
-			throw new AssumptionViolatedException("Requires JDK " + version + " but running "
-					+ JavaVersion.runningVersion());
-		}
-	}
-
-	/**
-	 * Assume that a particular {@link TestGroup} has been specified.
-	 * @param group the group that must be specified
-	 * @throws AssumptionViolatedException if the assumption fails
-	 */
+	@Deprecated
 	public static void group(TestGroup group) {
-		if (!GROUPS.contains(group)) {
-			throw new AssumptionViolatedException("Requires unspecified group " + group
-					+ " from " + GROUPS);
-		}
-	}
-
-	/**
-	 * Assume that a particular {@link TestGroup} has been specified before
-	 * executing the supplied {@link Executable}.
-	 * <p>If the assumption fails, the executable will not be executed, but
-	 * no {@link AssumptionViolatedException} will be thrown.
-	 * @param group the group that must be specified
-	 * @param executable the executable to execute if the test group is active
-	 * @since 4.2
-	 */
-	public static void group(TestGroup group, Executable executable) throws Exception {
-		if (GROUPS.contains(group)) {
-			executable.execute();
-		}
+		Set<TestGroup> testGroups = TestGroup.loadTestGroups();
+		assumeTrue(testGroups.contains(group),
+			() -> "Requires inactive test group " + group + "; active test groups: " + testGroups);
 	}
 
 	/**
 	 * Assume that the specified log is not set to Trace or Debug.
 	 * @param log the log to test
-	 * @throws AssumptionViolatedException if the assumption fails
+	 * @throws org.opentest4j.TestAbortedException if the assumption fails
 	 */
 	public static void notLogging(Log log) {
 		assumeFalse(log.isTraceEnabled());
 		assumeFalse(log.isDebugEnabled());
-	}
-
-	/**
-	 * Assume that we can load fonts.
-	 * <p>See <a href="https://java.net/jira/browse/MACOSX_PORT-355">MACOSX_PORT-355</a>
-	 * issue.
-	 * @throws AssumptionViolatedException if the assumption fails
-	 */
-	public static void canLoadNativeDirFonts() {
-		try {
-			GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-			Class<?> parserClass = ClassUtils.forName(
-					"net.sf.jasperreports.engine.util.JRStyledTextParser", Assume.class.getClassLoader());
-			Method method = parserClass.getMethod("getInstance");
-			method.setAccessible(true);
-			method.invoke(null);
-		}
-		catch (Throwable ex) {
-			throw new AssumptionViolatedException("Requires GraphicsEnvironment that can load fonts", ex);
-		}
-	}
-
-	/**
-	 * @since 4.2
-	 */
-	@FunctionalInterface
-	public static interface Executable {
-		void execute() throws Exception;
 	}
 
 }

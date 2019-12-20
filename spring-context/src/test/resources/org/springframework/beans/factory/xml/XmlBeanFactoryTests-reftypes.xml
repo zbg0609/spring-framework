@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <bones>
 
 	<bean id="jenny" name="jenny" class="org.springframework.tests.sample.beans.TestBean">
 		<property name="name"><value>Jenny</value></property>
 		<property name="age"><value>30</value></property>
-		<property name="spouse"><ref local="david"/></property>
+		<property name="spouse"><ref bean="david"/></property>
 	</bean>
 
 	<bean id="david" class="org.springframework.tests.sample.beans.TestBean">
@@ -14,10 +13,30 @@
 		<property name="spouse" ref="jenny"/>
 	</bean>
 
+	<bean id="jenny_constructor"  class="org.springframework.tests.sample.beans.TestBean">
+		<constructor-arg index="1"><ref bean="david_constructor"/></constructor-arg>
+	</bean>
+
+	<bean id="david_constructor" class="org.springframework.tests.sample.beans.TestBean">
+		<constructor-arg index="1"><ref bean="jenny_constructor"/></constructor-arg>
+	</bean>
+
+	<bean id="jenny_prototype"  class="org.springframework.tests.sample.beans.TestBean" scope="prototype">
+		<property name="spouse" ref="david_prototype" />
+	</bean>
+
+	<bean id="david_prototype" class="org.springframework.tests.sample.beans.TestBean" scope="prototype">
+		<property name="spouse" ref="jenny_prototype" />
+	</bean>
+
+	<bean id="jenny_depends_on"  class="org.springframework.tests.sample.beans.TestBean" depends-on="david_depends_on" />
+
+	<bean id="david_depends_on" class="org.springframework.tests.sample.beans.TestBean" depends-on="jenny_depends_on" />
+
 	<bean id="jenks" class="org.springframework.tests.sample.beans.TestBean" scope="prototype">
 		<property name="name"><value>Andrew</value></property>
 		<property name="age"><value>36</value></property>
-		<property name="spouse"><ref local="jenny"/></property>
+		<property name="spouse"><ref bean="jenny"/></property>
 	</bean>
 
 	<bean id="emma" class="org.springframework.tests.sample.beans.TestBean">
@@ -29,7 +48,7 @@
 	<bean id="georgia" class="org.springframework.tests.sample.beans.TestBean">
 		<property name="name"><value>Georgia</value></property>
 		<property name="age"><value>33</value></property>
-		<property name="spouse"><ref local="jenks"/></property>
+		<property name="spouse"><ref bean="jenks"/></property>
 	</bean>
 
 	<bean id="ego" class="org.springframework.tests.sample.beans.TestBean">
